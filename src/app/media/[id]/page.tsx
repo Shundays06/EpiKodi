@@ -36,7 +36,7 @@ export default function MediaDetailPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-2">Média introuvable</h1>
-          <p className="text-dark-500">Ce média n'existe pas ou a été supprimé.</p>
+          <p className="text-dark-500">Ce média n&apos;existe pas ou a été supprimé.</p>
         </div>
       </div>
     );
