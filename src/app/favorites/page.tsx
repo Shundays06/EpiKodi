@@ -1,5 +1,8 @@
 'use client';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 import { useSession } from 'next-auth/react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';

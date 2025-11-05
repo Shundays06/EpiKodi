@@ -110,9 +110,23 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Serialiser les BigInt
+    const serializedFavorite = {
+      ...favorite,
+      media: {
+        ...favorite.media,
+        fileSize: favorite.media.fileSize.toString(),
+        metadata: favorite.media.metadata ? {
+          ...favorite.media.metadata,
+          budget: favorite.media.metadata.budget?.toString() || null,
+          revenue: favorite.media.metadata.revenue?.toString() || null,
+        } : null,
+      },
+    };
+
     return NextResponse.json({
       success: true,
-      data: favorite,
+      data: serializedFavorite,
       message: 'Ajouté aux favoris',
     });
   } catch (error) {

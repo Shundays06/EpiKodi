@@ -10,8 +10,9 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type');
     const category = searchParams.get('category');
     const search = searchParams.get('search');
+    const sortBy = searchParams.get('sortBy') || 'createdAt-desc';
 
-    console.log('GET /api/media - params:', { page, pageSize, type, category, search });
+    console.log('GET /api/media - params:', { page, pageSize, type, category, search, sortBy });
 
     const skip = (page - 1) * pageSize;
 
@@ -25,7 +26,19 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    console.log('Prisma query where:', where);
+    // Parsing du tri (format: "field-direction")
+    const [sortField, sortDirection] = sortBy.split('-');
+    const orderBy: any = {};
+    
+    if (sortField === 'fileSize') {
+      orderBy.fileSize = sortDirection;
+    } else if (sortField === 'title') {
+      orderBy.title = sortDirection;
+    } else {
+      orderBy.createdAt = sortDirection || 'desc';
+    }
+
+    console.log('Prisma query where:', where, 'orderBy:', orderBy);
 
     const [items, total] = await Promise.all([
       prisma.media.findMany({
@@ -35,9 +48,7 @@ export async function GET(request: NextRequest) {
         },
         skip,
         take: pageSize,
-        orderBy: {
-          createdAt: 'desc',
-        },
+        orderBy,
       }),
       prisma.media.count({ where }),
     ]);

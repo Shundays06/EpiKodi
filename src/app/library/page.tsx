@@ -1,9 +1,12 @@
 'use client';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { MediaCard } from '@/components/MediaCard';
-import { Search, Filter } from 'lucide-react';
+import { Search, Filter, ArrowUpDown } from 'lucide-react';
 import type { PaginatedResponse, Media } from '@/types';
 
 const categories = [
@@ -14,17 +17,28 @@ const categories = [
   { value: 'PODCAST', label: 'Podcasts' },
 ];
 
+const sortOptions = [
+  { value: 'createdAt-desc', label: 'Plus récents' },
+  { value: 'createdAt-asc', label: 'Plus anciens' },
+  { value: 'title-asc', label: 'Titre (A-Z)' },
+  { value: 'title-desc', label: 'Titre (Z-A)' },
+  { value: 'fileSize-desc', label: 'Taille (Grande → Petite)' },
+  { value: 'fileSize-asc', label: 'Taille (Petite → Grande)' },
+];
+
 export default function LibraryPage() {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
+  const [sortBy, setSortBy] = useState('createdAt-desc');
   const [page, setPage] = useState(1);
 
   const { data, isLoading, error } = useQuery<PaginatedResponse<Media>>({
-    queryKey: ['media', { search, category, page }],
+    queryKey: ['media', { search, category, sortBy, page }],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (search) params.set('search', search);
       if (category) params.set('category', category);
+      if (sortBy) params.set('sortBy', sortBy);
       params.set('page', page.toString());
       
       const res = await fetch(`/api/media?${params}`);
@@ -53,6 +67,24 @@ export default function LibraryPage() {
                 }}
                 className="input pl-10 w-full"
               />
+            </div>
+
+            <div className="flex gap-2 items-center">
+              <ArrowUpDown className="w-5 h-5 text-dark-500" />
+              <select
+                value={sortBy}
+                onChange={(e) => {
+                  setSortBy(e.target.value);
+                  setPage(1);
+                }}
+                className="input"
+              >
+                {sortOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </div>
             
             <div className="flex gap-2">

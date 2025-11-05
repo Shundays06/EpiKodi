@@ -1,5 +1,8 @@
 'use client';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 import { useParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
@@ -46,7 +49,10 @@ export default function MediaDetailPage() {
         const res = await fetch(`/api/favorites?mediaId=${params.id}`, {
           method: 'DELETE',
         });
-        if (!res.ok) throw new Error('Failed to remove favorite');
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Failed to remove favorite');
+        }
         return res.json();
       } else {
         const res = await fetch('/api/favorites', {
@@ -54,12 +60,22 @@ export default function MediaDetailPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ mediaId: params.id }),
         });
-        if (!res.ok) throw new Error('Failed to add favorite');
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Failed to add favorite');
+        }
         return res.json();
       }
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Invalider les requêtes pour forcer un refresh
       queryClient.invalidateQueries({ queryKey: ['favorites'] });
+      
+      // Afficher un message de succès (optionnel)
+      console.log(isFavorite ? 'Retiré des favoris' : 'Ajouté aux favoris');
+    },
+    onError: (error: Error) => {
+      console.error('Erreur favoris:', error.message);
     },
   });
 

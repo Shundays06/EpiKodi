@@ -10,13 +10,17 @@ COPY prisma ./prisma/
 # Installer les dépendances
 RUN npm install
 
+# Installer sharp pour l'optimisation d'images en production
+RUN npm install sharp
+
 # Copier le reste du code
 COPY . .
 
 # Générer le client Prisma
 RUN npx prisma generate
 
-# Build de l'application
+# Build de l'application (skip DB connection au build)
+ENV SKIP_ENV_VALIDATION=1
 RUN npm run build
 
 # Étape 2: Production
@@ -36,6 +40,7 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 # Copier les fichiers nécessaires depuis le builder
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma

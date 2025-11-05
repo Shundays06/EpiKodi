@@ -11,7 +11,7 @@ interface MediaCardProps {
 }
 
 export function MediaCard({ media }: MediaCardProps) {
-  const posterUrl = media.metadata?.posterPath || '/placeholder-poster.jpg';
+  const posterUrl = media.metadata?.posterPath || '/placeholder-poster.svg';
   const rating = media.metadata?.rating;
 
   return (
@@ -53,6 +53,10 @@ export function MediaCard({ media }: MediaCardProps) {
                 </div>
               </>
             )}
+          </div>
+          {/* Afficher la taille du fichier */}
+          <div className="text-xs text-dark-600 mt-1">
+            📦 {(Number(media.fileSize) / (1024 * 1024)).toFixed(0)} MB
           </div>
           {media.metadata?.genres && media.metadata.genres.length > 0 && (
             <div className="flex gap-1 mt-2 flex-wrap">
