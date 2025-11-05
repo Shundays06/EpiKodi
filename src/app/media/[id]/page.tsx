@@ -1,7 +1,8 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSession } from 'next-auth/react';
 import Image from 'next/image';
 import { Play, Star, Calendar, Clock, Heart, Plus } from 'lucide-react';
 import { formatDuration } from '@/lib/utils';
@@ -11,6 +12,8 @@ import { useState } from 'react';
 
 export default function MediaDetailPage() {
   const params = useParams();
+  const { data: session } = useSession();
+  const queryClient = useQueryClient();
   const [isPlaying, setIsPlaying] = useState(false);
 
   const { data: media, isLoading } = useQuery<{ success: boolean; data: Media }>({
@@ -21,6 +24,43 @@ export default function MediaDetailPage() {
       return res.json();
     },
     enabled: !!params.id,
+  });
+
+  // Vérifier si c'est un favori
+  const { data: favorites } = useQuery({
+    queryKey: ['favorites'],
+    queryFn: async () => {
+      const res = await fetch('/api/favorites');
+      if (!res.ok) return { data: [] };
+      return res.json();
+    },
+    enabled: !!session,
+  });
+
+  const isFavorite = favorites?.data?.some((fav: any) => fav.mediaId === params.id) || false;
+
+  // Mutation pour ajouter/retirer des favoris
+  const toggleFavoriteMutation = useMutation({
+    mutationFn: async () => {
+      if (isFavorite) {
+        const res = await fetch(`/api/favorites?mediaId=${params.id}`, {
+          method: 'DELETE',
+        });
+        if (!res.ok) throw new Error('Failed to remove favorite');
+        return res.json();
+      } else {
+        const res = await fetch('/api/favorites', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mediaId: params.id }),
+        });
+        if (!res.ok) throw new Error('Failed to add favorite');
+        return res.json();
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['favorites'] });
+    },
   });
 
   if (isLoading) {
@@ -158,9 +198,23 @@ export default function MediaDetailPage() {
                 <Play className="w-6 h-6" />
                 <span>Lecture</span>
               </button>
-              <button className="btn btn-secondary px-6 py-4">
-                <Heart className="w-6 h-6" />
-              </button>
+              
+              {session && (
+                <button
+                  onClick={() => toggleFavoriteMutation.mutate()}
+                  disabled={toggleFavoriteMutation.isPending}
+                  className={`btn px-6 py-4 flex items-center gap-2 ${
+                    isFavorite ? 'btn-primary' : 'btn-secondary'
+                  } disabled:opacity-50`}
+                  title={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+                >
+                  <Heart className={`w-6 h-6 ${isFavorite ? 'fill-current' : ''}`} />
+                  <span className="hidden md:inline">
+                    {isFavorite ? 'Favori' : 'Favoris'}
+                  </span>
+                </button>
+              )}
+
               <button className="btn btn-secondary px-6 py-4">
                 <Plus className="w-6 h-6" />
               </button>
