@@ -11,6 +11,7 @@ import { Play, Star, Calendar, Clock, Heart, Plus } from 'lucide-react';
 import { formatDuration } from '@/lib/utils';
 import type { Media } from '@/types';
 import { VideoPlayer } from '@/components/VideoPlayer';
+import { CommentsAndRatings } from '@/components/CommentsAndRatings';
 import { useState } from 'react';
 
 export default function MediaDetailPage() {
@@ -259,6 +260,11 @@ export default function MediaDetailPage() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Section Commentaires et Notations */}
+        <div className="mt-12 pb-12">
+          <CommentsAndRatings mediaId={params.id as string} />
         </div>
       </div>
     </div>

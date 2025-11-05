@@ -1,0 +1,654 @@
+openapi: 3.0.0
+info:
+  title: EpiKodi API
+  description: API pour la gestion de médias, authentification, favoris, commentaires et notations
+  version: 1.0.0
+  contact:
+    name: EpiKodi Support
+    email: support@epikodi.com
+
+servers:
+  - url: http://localhost:3000/api
+    description: Serveur de développement
+  - url: https://epikodi.com/api
+    description: Serveur de production
+
+tags:
+  - name: Authentication
+    description: Authentification et gestion des sessions
+  - name: Media
+    description: Gestion des médias (films, musiques)
+  - name: Favorites
+    description: Gestion des favoris
+  - name: Comments
+    description: Commentaires sur les médias
+  - name: Ratings
+    description: Notations des médias
+  - name: Playlists
+    description: Gestion des playlists
+
+components:
+  securitySchemes:
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: next-auth.session-token
+  
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Message d'erreur
+        success:
+          type: boolean
+          example: false
+    
+    Media:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        type:
+          type: string
+          enum: [VIDEO, AUDIO, IMAGE, DOCUMENT]
+        fileName:
+          type: string
+        filePath:
+          type: string
+        fileSize:
+          type: string
+          description: Taille du fichier en octets (BigInt converti en string)
+        mimeType:
+          type: string
+        duration:
+          type: integer
+          nullable: true
+        year:
+          type: integer
+          nullable: true
+        category:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+    
+    Metadata:
+      type: object
+      properties:
+        id:
+          type: string
+        tmdbId:
+          type: integer
+        posterPath:
+          type: string
+          nullable: true
+        backdropPath:
+          type: string
+          nullable: true
+        overview:
+          type: string
+          nullable: true
+        rating:
+          type: number
+          format: float
+          nullable: true
+        releaseDate:
+          type: string
+          format: date
+          nullable: true
+        runtime:
+          type: integer
+          nullable: true
+        genres:
+          type: array
+          items:
+            type: string
+        cast:
+          type: array
+          items:
+            type: object
+    
+    Comment:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        mediaId:
+          type: string
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        user:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+    
+    Rating:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        mediaId:
+          type: string
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        createdAt:
+          type: string
+          format: date-time
+
+paths:
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Créer un nouveau compte utilisateur
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - password
+              properties:
+                name:
+                  type: string
+                  example: John Doe
+                email:
+                  type: string
+                  format: email
+                  example: john@example.com
+                password:
+                  type: string
+                  format: password
+                  minLength: 6
+                  example: password123
+      responses:
+        '201':
+          description: Compte créé avec succès
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      name:
+                        type: string
+                      email:
+                        type: string
+        '400':
+          description: Données invalides
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: L'email existe déjà
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /media:
+    get:
+      tags:
+        - Media
+      summary: Récupérer la liste des médias
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+          description: Numéro de la page
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+          description: Nombre d'éléments par page
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [VIDEO, AUDIO, IMAGE, DOCUMENT]
+          description: Filtrer par type de média
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Recherche par titre
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [fileSize-desc, fileSize-asc, title-asc, title-desc, createdAt-desc, createdAt-asc]
+            default: createdAt-desc
+          description: Critère de tri
+      responses:
+        '200':
+          description: Liste des médias
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Media'
+                  pagination:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      page:
+                        type: integer
+                      limit:
+                        type: integer
+                      totalPages:
+                        type: integer
+
+  /media/{id}:
+    get:
+      tags:
+        - Media
+      summary: Récupérer un média par son ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID du média
+      responses:
+        '200':
+          description: Détails du média
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Media'
+        '404':
+          description: Média introuvable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /media/{id}/stream:
+    get:
+      tags:
+        - Media
+      summary: Streamer un fichier média
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID du média
+      responses:
+        '200':
+          description: Stream du fichier
+          content:
+            video/*:
+              schema:
+                type: string
+                format: binary
+            audio/*:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Média introuvable
+
+  /media/scan:
+    post:
+      tags:
+        - Media
+      summary: Scanner le répertoire media pour nouveaux fichiers
+      security:
+        - sessionAuth: []
+      responses:
+        '200':
+          description: Scan terminé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  scanned:
+                    type: integer
+        '401':
+          description: Non authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /favorites:
+    get:
+      tags:
+        - Favorites
+      summary: Récupérer les favoris de l'utilisateur
+      security:
+        - sessionAuth: []
+      responses:
+        '200':
+          description: Liste des favoris
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        mediaId:
+                          type: string
+                        media:
+                          $ref: '#/components/schemas/Media'
+        '401':
+          description: Non authentifié
+
+    post:
+      tags:
+        - Favorites
+      summary: Ajouter un média aux favoris
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - mediaId
+              properties:
+                mediaId:
+                  type: string
+      responses:
+        '201':
+          description: Favori ajouté
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+        '400':
+          description: Le média est déjà en favori
+        '401':
+          description: Non authentifié
+
+    delete:
+      tags:
+        - Favorites
+      summary: Retirer un média des favoris
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: mediaId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Favori supprimé
+        '401':
+          description: Non authentifié
+        '404':
+          description: Favori introuvable
+
+  /comments:
+    get:
+      tags:
+        - Comments
+      summary: Récupérer les commentaires d'un média
+      parameters:
+        - name: mediaId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Liste des commentaires
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Comment'
+
+    post:
+      tags:
+        - Comments
+      summary: Ajouter un commentaire
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - mediaId
+                - content
+              properties:
+                mediaId:
+                  type: string
+                content:
+                  type: string
+                  minLength: 3
+                  maxLength: 500
+      responses:
+        '201':
+          description: Commentaire créé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Comment'
+        '400':
+          description: Données invalides
+        '401':
+          description: Non authentifié
+
+    delete:
+      tags:
+        - Comments
+      summary: Supprimer un commentaire
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: ID du commentaire
+      responses:
+        '200':
+          description: Commentaire supprimé
+        '401':
+          description: Non authentifié
+        '403':
+          description: Non autorisé
+        '404':
+          description: Commentaire introuvable
+
+  /ratings:
+    get:
+      tags:
+        - Ratings
+      summary: Récupérer les notations d'un média
+      parameters:
+        - name: mediaId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Statistiques de notation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      averageRating:
+                        type: number
+                        format: float
+                      totalRatings:
+                        type: integer
+                      userRating:
+                        type: integer
+                        nullable: true
+
+    post:
+      tags:
+        - Ratings
+      summary: Noter un média
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - mediaId
+                - rating
+              properties:
+                mediaId:
+                  type: string
+                rating:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+      responses:
+        '200':
+          description: Notation enregistrée
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Rating'
+        '400':
+          description: Données invalides
+        '401':
+          description: Non authentifié
+
+    delete:
+      tags:
+        - Ratings
+      summary: Supprimer une notation
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: mediaId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Notation supprimée
+        '401':
+          description: Non authentifié
+        '404':
+          description: Notation introuvable
+
+  /playlists:
+    get:
+      tags:
+        - Playlists
+      summary: Récupérer les playlists de l'utilisateur
+      security:
+        - sessionAuth: []
+      responses:
+        '200':
+          description: Liste des playlists
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object

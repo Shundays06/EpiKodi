@@ -28,8 +28,8 @@ FROM node:18-alpine AS runner
 
 WORKDIR /app
 
-# Installer OpenSSL pour Prisma
-RUN apk add --no-cache openssl libc6-compat
+# Installer OpenSSL et netcat pour Prisma et healthcheck
+RUN apk add --no-cache openssl libc6-compat netcat-openbsd
 
 # Variables d'environnement pour Next.js
 ENV NODE_ENV=production
@@ -46,6 +46,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 
+# Copier le script d'entrypoint
+COPY --chown=nextjs:nodejs docker-entrypoint.sh ./docker-entrypoint.sh
+RUN chmod +x ./docker-entrypoint.sh
+
 USER nextjs
 
 EXPOSE 3000
@@ -53,4 +57,4 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "server.js"]
+ENTRYPOINT ["./docker-entrypoint.sh"]
