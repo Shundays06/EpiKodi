@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { tmdbService } from '@/services/tmdb.service';
+import { getTMDBService } from '@/services/tmdb.service';
 import { prisma } from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
@@ -8,6 +8,7 @@ export async function POST(request: NextRequest) {
     
     console.log(`[TEST] Enriching ${title} (${year}) for media ${mediaId}`);
     
+    const tmdbService = getTMDBService();
     const metadata = await tmdbService.enrichMediaMetadata(title, year, false);
     
     if (!metadata) {

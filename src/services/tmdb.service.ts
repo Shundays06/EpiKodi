@@ -82,12 +82,13 @@ export class TMDBService {
   private baseUrl: string;
 
   constructor() {
-    console.log('[TMDB] Initializing with API key:', TMDB_API_KEY ? 'SET' : 'NOT SET');
-    if (!TMDB_API_KEY) {
+    const apiKey = process.env.TMDB_API_KEY;
+    console.log('[TMDB] Initializing with API key:', apiKey ? 'SET' : 'NOT SET');
+    if (!apiKey) {
       throw new Error('TMDB_API_KEY is not configured');
     }
-    this.apiKey = TMDB_API_KEY;
-    this.baseUrl = TMDB_BASE_URL;
+    this.apiKey = apiKey;
+    this.baseUrl = process.env.TMDB_BASE_URL || 'https://api.themoviedb.org/3';
   }
 
   private async request<T>(endpoint: string, params: Record<string, any> = {}): Promise<T> {
@@ -249,4 +250,12 @@ export class TMDBService {
   }
 }
 
-export const tmdbService = new TMDBService();
+// Lazy initialization - ne crée l'instance qu'à la demande
+let tmdbServiceInstance: TMDBService | null = null;
+
+export function getTMDBService(): TMDBService {
+  if (!tmdbServiceInstance) {
+    tmdbServiceInstance = new TMDBService();
+  }
+  return tmdbServiceInstance;
+}

@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { prisma } from '@/lib/prisma';
-import { tmdbService } from '@/services/tmdb.service';
+import { getTMDBService } from '@/services/tmdb.service';
 import { cleanTitle, extractYear } from '@/lib/utils';
 import { MediaType, MediaCategory } from '@prisma/client';
 
@@ -198,6 +198,7 @@ export class MediaScanService {
   ): Promise<void> {
     try {
       console.log(`[TMDB] Enriching metadata for: ${title} (${year})`);
+      const tmdbService = getTMDBService();
       const metadata = await tmdbService.enrichMediaMetadata(title, year || undefined, isTV);
       
       if (metadata) {
