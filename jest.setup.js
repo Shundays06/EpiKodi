@@ -29,7 +29,9 @@ jest.mock('next-auth/react', () => ({
 jest.mock('next/image', () => ({
   __esModule: true,
   default: (props) => {
+    // Retirer l'attribut fill qui cause un warning
+    const { fill, ...otherProps } = props
     // eslint-disable-next-line jsx-a11y/alt-text, @next/next/no-img-element
-    return <img {...props} />
+    return <img {...otherProps} />
   },
 }))
